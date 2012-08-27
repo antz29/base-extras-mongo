@@ -1,0 +1,20 @@
+{
+    "name": "antz29/base-extras-mongo",
+    "description": "MongodB support for the Base PHP Framework",
+    "keywords": ["mongodb", "base"],
+    "type": "library",
+    "homepage": "https://github.com/antz29/base-extras-mongo",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "John Le Drew",
+            "homepage": "http://antz29.com/"
+        }
+    ],
+    "require": {
+        "php" : ">=5.4.0",
+        "ext-mongo" : "*",
+        "antz29/base-extras-hooks" : "0.1.*",
+        "antz29/base-strings" : "0.1.*",
+    }
+}
