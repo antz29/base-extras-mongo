@@ -166,9 +166,9 @@ abstract class MongoModel extends \Base\Model {
 		switch ($method) {
 			case 'set':
 				$value = array_shift($args);
-				return $this->setValue($value,$name,$def,$args);
+				return $this->setValue($value,$name,$def,$args,false);
 			case 'get':
-				return $this->getValue($name,$def,$args);
+				return $this->getValue($name,$def,$args,false);
 				break;
 			case 'is':
 			case 'has':
@@ -211,11 +211,11 @@ abstract class MongoModel extends \Base\Model {
 			if (isset($this->_proxied_fields[$field]) && $proxy) unset($this->_data[$field]);
 		}
 
-		if (!$no_hooks && !$this->preUpdate($new)) return false;
+		if (!$no_hooks && !$this->callHook('pre_update',[$new],true)) return false;
 
 		try {
 			$this->_coll->save($this->_data);
-			if (!$no_hooks) $this->postUpdate($new);
+			if (!$no_hooks) $this->callHook('post_update',[$new]);
 
 			if ($proxy) $proxy->save($no_hooks);
 
@@ -227,7 +227,8 @@ abstract class MongoModel extends \Base\Model {
 		}
 	}
 
-	final public function getData(array $fields = null) {
+	final public function getData(array $fields = null) 
+	{
 		$out['_id'] = $this->getId();
 		$fields = isset($fields) ? $fields : $this->getFields();
 		foreach ($fields as $field) {
@@ -241,13 +242,15 @@ abstract class MongoModel extends \Base\Model {
 		$this->_data = [];
 	}
 	
-	final public function setData(array $data) {
+	final public function setData(array $data) 
+	{
 		foreach ($data as $key => $value) {
 			$this->_data[$key] = $value;
 		}
 	}
 
-	final public function remove() {
+	final public function remove() 
+	{
 		try {
 			return $this->_coll->remove(array("_id" => $this->getId()));
 		}
@@ -256,36 +259,48 @@ abstract class MongoModel extends \Base\Model {
 		}
 	}
 
-	final public function getId() {
+	final public function getId() 
+	{
 		return $this->_data['_id'];
 	}
 
-	public function getFields() {
+	final public function getFields() 
+	{
 		return array_keys($this->_fields);
 	}
 
-	public function getFieldDef($name) {
+	final public function getFieldDef($name) 
+	{
 		return isset($this->_fields[$name]) ? $this->_fields[$name] : array('type' => 'undefined');
 	}
 
-	// HOOKS
-
-	public function preUpdate($new = false) { return true; }
-	public function postUpdate($new = false) {}
-
 	// INTERNAL
 
-	private function getValue($name,$def,$args) {
+	private function getValue($name,$def,$args,$use_getter=true) 
+	{
 		if (isset($this->_proxied_fields[$name]) && $this->getProxy()) return $this->getProxy()->getValue($name,$def,$args);
+
 		$name = isset($def['alias']) ? $def['alias'] : $name;
+
+		if ($use_getter) {
+			$getter = 'get' . String::camelize($name,true);
+			if (method_exists($this, $getter)) return $this->$getter();
+		}
+
 		$value = isset($this->_data[$name]) ? $this->_data[$name] : null;
 		
 		return $this->formatValue($value,$name,$def,$args);
 	}
 
-	private function setValue($value,$name,$def,$args) {
+	private function setValue($value,$name,$def,$args,$use_setter=true) {
 		if (isset($this->_proxied_fields[$name]) && $this->getProxy()) return $this->getProxy()->setValue($value,$name,$def,$args);
 		$name = isset($def['alias']) ? $def['alias'] : $name;
+
+		if ($use_setter) {
+			$setter = 'set' . String::camelize($name,true);
+			if (method_exists($this, $getter)) return $this->$setter($value);
+		}
+
 		return $this->set($name,$this->parseValue($value,$name,$def,$args));
 	}
 
